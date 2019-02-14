@@ -3,6 +3,8 @@
 <title>Open Data Examples ODD19 at ZKM</title>
 <meta charset="utf-8">
 
+<!-- ---------------------------------------------------------------------- -->
+
 <script>
 
 var urls = [
@@ -28,29 +30,42 @@ var urls = [
 
     "https://offeneregister.de/",
 
-///  "http://127.0.0.1:8080/#/chapter-slide-1-1",
-//  "http://127.0.0.1:8080/#/chapter-slide-2-1",
   "http://127.0.0.1:8080/#/chapter-slide-3-1"
 ];
 
-var navs = []
-
+var navs = [
+  "Der Open Data Day ist eine jährlich stattfindende Veranstaltung, um international \
+  auf die Bedeutung offener Daten hinzuweisen. Zum neunten Mal werden lokale \
+  Interessensgruppen rund um die Welt durch verschiedene Aktivitäten auf die Bedeutung \
+  offener Daten hinweisen. Der Open Data Day ist eine gute Gelegenheit auf die Vorteile \
+  offener Daten hinzuweisen und den Stellenwert innerhalb von Verwaltung, der \
+  Wirtschaft und der Zivilgesellschaft zu erhöhen."
+]
 
 var uidx = 0
 var tm = 0
 const tms = 100 // milliseconds for timer
-const tp = 20 * 1000  // period in ms
+const slideDuration = 20 // in seconds
+var tp = slideDuration * 1000  // period in ms
 var timer
-var fscale = .9
+var fscale = .9 // initial frame scale
+var sct = 0 // scroll timer
+
+const maxheight = 1000 // mobiles have infinite window height ...
 
 //var w = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
 //var h = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
 
+// /////////////////////////////////////////
 function updateUrl(){
   tm += tms
   var h = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
   var frameurl = document.getElementById("frameurl");
-  frameurl.style.height = h - 200 + "px" // fixed boarder is better
+  var hg = Math.min(maxheight, h - 200) + "px" // fixed boarder is better
+  frameurl.style.height = hg;
+  var nav = document.getElementById("nav");
+  nav.style.height = hg;
+  var frameurl = document.getElementById("frameurl");
   if (tm >= tp ) {
     tm = 0
     uidx++
@@ -69,8 +84,38 @@ function updateUrl(){
     fscale =.9
   }
   frameurl.style.transform = "scale(" + fscale + "," + fscale + ")"; // ".5,.5)";
+
+  // scroll heigth
+  var sh = document.getElementById("nav").scrollHeight
+  console.log("sh,hg: ", sh,Math.min(maxheight, h - 200))
+  if (sh > Math.min(maxheight, h - 200) + 10) {
+    if (sct > 20) {
+      sct = 0
+      var nav_ = document.getElementById("nav").innerHTML.split(".")
+      nav_.shift()
+      document.getElementById("nav").innerHTML = nav_.join(".")
+    } else
+      sct ++
+  }
+
 }
 
+// /////////////////////////////////////////
+function faster(){
+  if (tp > (slideDuration * 1000) / 10) tp *= .8;
+  document.getElementById("speed").innerHTML = Math.floor(tp / 1000)
+  // force update here
+  tm = tp + 1
+  updateUrl()
+}
+
+// /////////////////////////////////////////
+function slower(){
+  if (tp < (slideDuration * 1000) * 10) tp *= 1.2;
+  document.getElementById("speed").innerHTML = Math.floor(tp / 1000)
+}
+
+// /////////////////////////////////////////
 function loadUrls(){
 
   var xhttp = new XMLHttpRequest();
@@ -86,37 +131,39 @@ function loadUrls(){
            navs = []
            for (var i = 0; i < rows.length; i++) {
              items = rows[i].split('\t')
-             //console.log("row [",i,"], :", rows[i])
+             if (items[0] == "") continue
              urls.push(items[0])
              // limit text to 500 characters if no scrolling
-             navs.push(items[1].substr(0,500))
-             //console.log(items[0],items[1])
-             // csvData.push(jsonObject[i].split('\t'));
+             nav = items[1] // .substr(0,500)
+             navs.push(nav)
            }
 
          }
       }
   };
 
-  // var csvUrl = "http://localhost:8080/oddUrls.tsv" // use tab separated to avoid confusion with " and ,"
-  //var csvUrl = "http://" + loc + ":" + window.location.port + "/oddUrls.tsv" // use tab separated to avoid confusion with " and ,"
   //window.location.protocol = "http:"
   //window.location.host = "css-tricks.com"
   //window.location.pathname = "example/index.html"
   //window.location.port  // not neceessarily set if port 80
-  var csvUrl = window.location.protocol + "//" + loc + ":" + window.location.host + "/" + window.location.port + "/oddUrls.tsv" // use tab separated to avoid confusion with " and ,"
+  const csvFile = "oddUrls.tsv"
+  var path = window.location.pathname.split("/")
+  if (path[0] == "") path.shift()
+  //console.log("pathname: ",window.location.pathname)
+  //console.log("path,len: ",path,path.length)
+  var fpath = ""
+  for (i=0; i < path.length - 1; i++){  // ommit last
+    fpath += path.shift() + "/"
+    console.log("fpath: ",fpath)
+  }
 
-  console.log("Loading csv: ",csvUrl)
+  var csvUrl = window.location.protocol + "//" + window.location.host + "/" + fpath + "/" + csvFile // use tab separated to avoid confusion with " and ,"
 
   xhttp.open("GET", csvUrl, true);
   xhttp.send();
-  /*
-  var request = new XMLHttpRequest();
-  request.open("GET", url, false);
-  request.send(null);
-  */
 }
 
+// /////////////////////////////////////////
 function JSrun() {
   //alert("jsrun")
 
@@ -124,11 +171,13 @@ function JSrun() {
   // get all elements
   var head = document.getElementById("head");
   var footer = document.getElementById("footer");
-  var nav = document.getElementById("nav");
   var footer = document.getElementById("footer");
   footer.innerHTML = urls[uidx]
   var frameurl = document.getElementById("frameurl");
   frameurl.src = urls[uidx]
+  var nav = document.getElementById("nav");
+  nav.innerHTML = navs[uidx]
+  document.getElementById("speed").innerHTML = Math.floor(tp / 1000)
 
   loadUrls()
 
@@ -136,14 +185,17 @@ function JSrun() {
 
 }
 
+
 </script>
+
+<!-- ---------------------------------------------------------------------- -->
 
 <style>
 td {background:lightgrey; vertical-align:top; text-align:left; border:1px solid black; padding:2px 10px}
 pre {margin:0}
 table {border-collapse:collapse; table-layout:fixed}
 body {background:lightyellow; font-family:Arial}
-#nav {text-align:justify; vertical-align: top; font-size:150%;}
+#nav {display:block; border:none; width:90%; text-align:left; vertical-align: bottom; font-size:150%; overflow:hidden; text-overflow:clip;}
 #head {text-align:center; font-size:300%; font-weight:bold}
 #footer {text-align:center; vertical-align: middle; font-size:200%; }
 #frameurl {
@@ -202,13 +254,20 @@ third row is OKF info, logos etc
   <tr>
     <table width=100%>
       <tr>
-    <td id="footer" height="10%" width="90%">
-      Footer
-    </td>
-    <td width="10%">
-      <img src="./logo.png" align="right">
-    </td>
-  </tr>
+        <td id="ctl" width="10%">
+          <p>
+          <input type="button" value="Faster" img src="./logo.png" align="left" onclick="faster()">
+          <input type="button" value="Slower" img src="./logo.png" align="right" onclick="slower()">
+        </p>
+        <p id="speed"></p>
+        </td>
+        <td id="footer" height="10%" width="90%">
+          Footer
+        </td>
+        <td width="10%">
+          <img src="./logo.png" align="right">
+        </td>
+      </tr>
 </table>
   </tr>
 </table>
